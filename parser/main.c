@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include "../config/config.h"
+#include "../database/fsdb.h"
 #include "../answer/answer.h"
 #include "../pack/pack.h"
 #include "parser.h"

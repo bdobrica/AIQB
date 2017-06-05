@@ -17,10 +17,10 @@
  */
 struct file_header_t {
 	char prefix[4];
-	unsigned long id;
-	unsigned long parent;
+	unsigned long int id;
+	unsigned long int parent;
 	unsigned short int priority;
-	unsigned long time;
+	unsigned long int time;
 	unsigned char status;
 	};
 /**

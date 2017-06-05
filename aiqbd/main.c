@@ -38,8 +38,6 @@ int main (int argc, char ** argv) {
 	_parse_args (argc, argv, &_config);
 	_parse_file (&_config);
 
-	_print_config (&_config);
-
 	/** logging */
 	setlogmask (LOG_UPTO (LOG_INFO));
 	openlog (DAEMON_NAME, LOG_CONS | LOG_PERROR, LOG_USER);
@@ -69,28 +67,41 @@ int main (int argc, char ** argv) {
 		if (_count_db (_config.problem_queue) < _config.problem_queue_size) {
 			problem = _extract_db (&_config.problems, NULL);
 			if (problem != NULL) {
-				problem->handler = (pthread_t *) malloc (sizeof (pthread_t));
-				if (pthread_create (problem->handler, &attr, &_aiqbd_handling_problem, problem)) {
-					/** no problem */
+				if (problem->header->status == 'N') {
+					problem->header->status = 'I'; /** In progress */
+					problem->handler = (pthread_t *) malloc (sizeof (pthread_t));
+					_insert_db (&_config.problem_queue, problem);
+					if (pthread_create (problem->handler, &attr, &_aiqbd_handling_problem, problem)) {
+						/** no problem */
+						}
 					}
-				_insert_db (&_config.problem_queue, problem);
-				if (_config.problems != NULL) {
-					_config.problems = _config.problems->next;
+				else {
+					_insert_db (&_config.problems, problem);
 					}
 				}
 			}
 		if (_count_queue (_config.answer_queue) < _config.answer_queue_size) {
 			answer = _extract_queue (&_config.answers, 0);
 			if (answer != NULL) {
-				answer->handler = (pthread_t *) malloc (sizeof (pthread_t));
-				if (pthread_create (answer->handler, &attr, &_aiqbd_handling_answer, answer)) {
-					/** no answer */
+				if (answer->status == 'N') {
+					answer->status = 'I'; /** In progress */
+					answer->handler = (pthread_t *) malloc (sizeof (pthread_t));
+					_insert_queue (&_config.answer_queue, answer);
+					if (pthread_create (answer->handler, &attr, &_aiqbd_handling_answer, answer)) {
+						/** no answer */
+						}
 					}
-				_insert_queue (&_config.answer_queue, answer);
-				if (_config.answers != NULL) {
-					_config.answers = _config.answers->next;
+				else {
+					_insert_queue (&_config.answers, answer);
 					}
 				}
+			}
+
+		if (_config.problems != NULL) {
+			//_config.problems = _config.problems->next;
+			}
+		if (_config.answers != NULL) {
+			//_config.answers = _config.answers->next;
 			}
 
 		sleep (1);

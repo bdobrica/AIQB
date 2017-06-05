@@ -231,6 +231,9 @@ unsigned long int _last_id_db (struct fsdb_t * db) {
 	unsigned long last_id = 0;
 	struct fsdb_t * atom = db;
 
+	if (db == NULL)
+		return last_id;
+
 	do {
 		last_id = last_id > atom->header->id ? last_id : atom->header->id;
 		atom = atom->next;

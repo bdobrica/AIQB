@@ -38,18 +38,27 @@ unsigned long _problem_pack (unsigned char * name, struct problem_t * problem, s
 	if (!file) return 0;
 
 	memcpy (metadata.header.prefix, "AIQB", 4);
-	metadata.header.time = (unsigned long) time (NULL);
 
 	if (file_header != NULL) {
 		metadata.header.id = file_header->id;
 		metadata.header.parent = file_header->parent;
 		metadata.header.priority = file_header->priority;
+		metadata.header.time = (unsigned long) time (NULL);
 		metadata.header.status = file_header->status;
+
+		printf ("file metadata:\nprefix=%.4s\nid=%ld\nparent=%ld\npriority=%d\ntime=%ld\nstatus=%c\n",
+			metadata.header.prefix,
+			file_header->id,
+			file_header->parent,
+			file_header->priority,
+			metadata.header.time,
+			file_header->status);
 		}
 	else {
 		metadata.header.id = 0;
 		metadata.header.parent = 0;
 		metadata.header.priority = 0;
+		metadata.header.time = (unsigned long) time (NULL);
 		metadata.header.status = 0;
 		}
 

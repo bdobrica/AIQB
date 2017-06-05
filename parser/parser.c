@@ -8,6 +8,9 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include "../daemon/daemon.h"
+#include "../config/config.h"
+#include "../database/fsdb.h"
 #include "../answer/answer.h"
 #include "../pack/pack.h"
 #include "parser.h"
@@ -20,12 +23,35 @@
  */
 void _reply (int fd, enum reply_state_ct state, union _reply_data data) {
 	int n;
+	unsigned long c;
 	char buffer[128];
 
 	errno = 0;
 	if (fd < 0 || fcntl (fd, F_GETFD) < 0 || errno == EBADF)
 		return;
 	switch (state) {
+		case reply_solution:
+			sprintf (buffer, TOKEN_REPLY_SOLUTION, data.answer->id);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write to descriptor\n");
+				}
+			for (c = 0; c < data.answer->size_y; c++) {
+				sprintf (buffer, TOKEN_REPLY_SOLUTION_ATOM, *(data.answer->data + data.answer->size_x + c));
+				n = write (fd, buffer, strlen (buffer));
+				if (n < 0) {
+					printf ("unable to write to descriptor\n");
+					}
+				}
+			write (fd, "\n", 1);
+			break;
+		case reply_not_ready:
+			sprintf (buffer, TOKEN_REPLY_NOT_READY);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write to descriptor\n");
+				}
+			break;
 		case reply_problem_ok:
 			sprintf (buffer, TOKEN_REPLY_PROBLEM_OK, data.id);
 			n = write (fd, buffer, strlen (buffer));
@@ -89,6 +115,7 @@ void _parser (int fd, struct parser_handle_t * handler) {
 
 	struct answer_t * answer;
 	struct problem_t * problem;
+	struct query_t query;
 
 	union _reply_data reply_data;
 	enum reply_state_ct reply_state;
@@ -220,9 +247,19 @@ void _parser (int fd, struct parser_handle_t * handler) {
 					if (parser_state == parser_answer) {
 						switch (parser_index) {
 							case 0:
-								answer->size_x = (unsigned long) atoi (token);
+								query.type = query_by_id;
+								query.query.id = (unsigned long) atoi (token);
+								answer->problem = _find_db (_config.problems, &query);
+								if (answer->problem == NULL) {
+									_reply (fd, reply_unknown_error, reply_data);
+									free (answer);
+									return;
+									}
 								break;
 							case 1:
+								answer->size_x = (unsigned long) atoi (token);
+								break;
+							case 2:
 								answer->size_y = (unsigned long) atoi (token);
 								answer->data = (double *) malloc ((answer->size_x + answer->size_y) * sizeof (double));
 
@@ -234,6 +271,37 @@ void _parser (int fd, struct parser_handle_t * handler) {
 								break;
 							}
 						parser_index ++;
+						}
+					if (parser_state == parser_solution) {
+						parser_state = parser_idle;
+						parser_index = 0;
+						
+						answer = _find_queue (_config.answers, (unsigned long) atoi (token));
+						if (answer == NULL) {
+							_reply (fd, reply_unknown_error, reply_data);
+							}
+						else {
+							if (answer->status != 'S') {
+								_reply (fd, reply_not_ready, reply_data);
+								}
+							else {
+								reply_data.answer = answer;
+								_reply (fd, reply_solution, reply_data);
+								}
+							}
+						}
+					if (parser_state == parser_delete_answer) {
+						parser_state = parser_idle;
+						parser_index = 0;
+
+						answer = _extract_queue (&_config.answers, (unsigned long) atoi (token));
+						if (answer == NULL) {
+							_reply (fd, reply_unknown_error, reply_data);
+							}
+						else {
+							_free_answer (answer);
+							_reply (fd, reply_idle, reply_data);
+							}
 						}
 					}
 
@@ -258,6 +326,9 @@ void _parser (int fd, struct parser_handle_t * handler) {
 						if (parser_index == 8 + problem->cv_size + problem->test_size + problem->rows * (problem->size_x + problem->size_y) + problem->state_size) {
 							reply_state = reply_problem_ok;
 							reply_data.id = 1;
+							if (handler != NULL && handler->register_problem != NULL) {
+								reply_data.id = handler->register_problem (problem);
+								}
 							_reply (fd, reply_state, reply_data);
 
 							_print_problem (problem);
@@ -266,16 +337,19 @@ void _parser (int fd, struct parser_handle_t * handler) {
 							}
 						}
 					if (parser_state == parser_answer) {
-						if (parser_index > 1 && parser_index < 2 + answer->size_x + answer->size_y) {
-							data_index = parser_index - 2;
+						if (parser_index > 2 && parser_index < 3 + answer->size_x + answer->size_y) {
+							data_index = parser_index - 3;
 							*(answer->data + data_index) = (double) atof (token);
 							}
 
 						parser_index ++;
 
-						if (parser_index == 2 + answer->size_x + answer->size_y) {
+						if (parser_index == 3 + answer->size_x + answer->size_y) {
 							reply_state = reply_answer_ok;
 							reply_data.id = 1;
+							if (handler != NULL && handler->register_answer != NULL) {
+								reply_data.id = handler->register_answer (answer);
+								}
 							_reply (fd, reply_state, reply_data);
 
 							_print_answer (answer);
@@ -302,9 +376,6 @@ void _parser (int fd, struct parser_handle_t * handler) {
 							_reply (fd, reply_memory_error, reply_data);
 							return;
 							}
-						if (handler != NULL && handler->register_problem != NULL) {
-							db_id = handler->register_problem (problem);
-							}
 						}
 
 					if (strcmp (token, TOKEN_REGISTER_ANSWER) == 0) {
@@ -314,19 +385,43 @@ void _parser (int fd, struct parser_handle_t * handler) {
 						answer = (struct answer_t *) malloc (sizeof (struct answer_t));
 						answer->data = NULL;
 
-						if (problem == NULL) {
+						if (answer == NULL) {
 							_reply (fd, reply_memory_error, reply_data);
 							return;
 							}
-						if (handler != NULL && handler->register_answer != NULL) {
-							db_id = handler->register_answer (answer);
-							}
 						}
 
-					if (strcmp (token, TOKEN_REQUEST_ANSWER) == 0) {
+					if (strcmp (token, TOKEN_REQUEST_SOLUTION) == 0) {
+						parser_state = parser_solution;
+						parser_index = 0;
+						}
+
+					if (strcmp (token, TOKEN_DELETE_ANSWER) == 0) {
+						parser_state = parser_delete_answer;
+						parser_index = 0;
 						}
 
 					if (strcmp (token, TOKEN_REQUEST_STATE) == 0) {
+						}
+
+					if (strcmp (token, TOKEN_LIST_PROBLEMS) == 0) {
+						parser_state = parser_idle;
+						parser_index = 0;
+
+						if (handler != NULL && handler->list_problems != NULL) {
+							_reply (fd, reply_idle, reply_data);
+							handler->list_problems ();
+							}
+						}
+					
+					if (strcmp (token, TOKEN_LIST_ANSWERS) == 0) {
+						parser_state = parser_idle;
+						parser_index = 0;
+
+						if (handler != NULL && handler->list_answers != NULL) {
+							_reply (fd, reply_idle, reply_data);
+							handler->list_answers ();
+							}
 						}
 
 					if (strcmp (token, TOKEN_REQUEST_CLOSE) == 0) {

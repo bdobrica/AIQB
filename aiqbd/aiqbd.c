@@ -32,6 +32,7 @@ unsigned long _aiqbd_register_problem (struct problem_t * problem) {
 
 	id = _config.auto_increment ++;
 
+	printf ("changing dir to %s\n", _config.database_dir);
 	if (chdir (_config.database_dir) < 0) {
 		return -1;
 		}
@@ -41,32 +42,34 @@ unsigned long _aiqbd_register_problem (struct problem_t * problem) {
 	if (atom == NULL) {
 		return -1;
 		}
-	atom->name = (char *) malloc ((strlen (buffer) + 1) * sizeof (char));
+	atom->name = _concat_path (_config.database_dir, buffer);
 	if (atom->name == NULL) {
 		free (atom);
 		return -1;
 		}
-	strcpy (atom->name, buffer);
 
-	atom->header = (struct file_header_t *) malloc (sizeof (struct file_header_t *));
+	atom->header = (struct file_header_t *) malloc (sizeof (struct file_header_t));
 	if (atom->header == NULL) {
 		free (atom->name);
 		free (atom);
 		return -1;
 		}
+
+	memcpy (atom->header->prefix, "AIQB", 4);
 	atom->header->id = id;
-	atom->header->parent = 0;
+	atom->header->parent = (unsigned long) 0;
 	atom->header->priority = 0;
 	atom->header->status = 'N';
 
-	length = _problem_pack (atom->name, problem, atom->header);
+	printf ("packing problem: %s\n", atom->name);
+	length = _problem_pack (buffer, problem, atom->header);
 	if (!length) {
 		free (atom->name);
 		free (atom->header);
 		free (atom);
 		return -1;
 		}
-	
+
 	atom->handler = NULL;
 	atom->prev = atom;
 	atom->next = atom;
@@ -78,16 +81,28 @@ unsigned long _aiqbd_register_problem (struct problem_t * problem) {
 	}
 
 unsigned long _aiqbd_register_answer (struct answer_t * answer) {
+	answer->status = 'N';
 	_insert_queue (&_config.answers, answer);
 	return answer->id;
+	}
+
+void _aiqbd_list_problems (void) {
+	_print_db (_config.problems);
+	}
+
+void _aiqbd_list_answers (void) {
+	_print_queue (_config.answers);
 	}
 
 void * _aiqbd_handling_socket_client (void * arg) {
 	int new_socket_fd = *((int *) arg);
 	struct parser_handle_t handler;
 
-	handler.register_problem = &_aiqbd_register_problem;
-	handler.register_answer = &_aiqbd_register_answer;
+	handler.register_problem = _aiqbd_register_problem;
+	handler.register_answer = _aiqbd_register_answer;
+	handler.request_answer = NULL; //_aiqbd_solve_answer;
+	handler.list_problems = _aiqbd_list_problems;
+	handler.list_answers = _aiqbd_list_answers;
 
 	printf ("client accepted\n");
 
@@ -145,20 +160,34 @@ void * _aiqbd_handling_socket (void * arg) {
 
 void * _aiqbd_handling_problem (void * arg) {
 	struct fsdb_t * problem = (struct fsdb_t *) arg;
+	struct query_t query;
 
-	printf ("print problem\n");
+	printf ("solve problem\n");
 	//_print_problem (problem);
 
+	problem->header->status = 'S'; /** Solved */
+	_problem_write_metadata (problem->name, problem->header);
+
 	free (problem->handler);
+
+	query.type = query_by_id;
+	query.query.id = problem->header->id;
+
+	problem = _extract_db (&_config.problem_queue, &query);
+	_insert_db (&_config.problems, problem);
 	return NULL;
 	}
 
 void * _aiqbd_handling_answer (void * arg) {
 	struct answer_t * answer = (struct answer_t *) arg;
 
-	printf ("print answer\n");
+	printf ("solve answer\n");
 	//_print_answer (answer);
 
+	answer->status = 'S'; /** Solved */
 	free (answer->handler);
+
+	answer = _extract_queue (&_config.answer_queue, answer->id);
+	_insert_queue (&_config.answers, answer);
 	return NULL;
 	}

@@ -2,10 +2,13 @@
 #define PARSER_TOKENS
 
 #define TOKEN_REGISTER_PROBLEM		"reg:problem"
-#define TOKEN_REGISTER_ANSWER		"reg:answeranswer"
-#define TOKEN_REQUEST_ANSWER		"req:answer"
+#define TOKEN_REGISTER_ANSWER		"reg:answer"
+#define TOKEN_REQUEST_SOLUTION		"req:solution"
 #define TOKEN_REQUEST_STATE		"req:state"
 #define TOKEN_REQUEST_CLOSE		"req:close"
+#define TOKEN_LIST_PROBLEMS		"lst:problems"
+#define TOKEN_LIST_ANSWERS		"lst:answers"
+#define TOKEN_DELETE_ANSWER		"dlt:answer"
 
 #endif
 
@@ -19,6 +22,9 @@
 #define TOKEN_REPLY_PROBLEM_OK		"ok:problem:%ld\n"
 #define TOKEN_REPLY_ANSWER_OK		"ok:answer:%ld\n"
 #define TOKEN_REPLY_SOLUTION_OK		"ok:solution:"
+#define TOKEN_REPLY_NOT_READY		"wrn:notready\n"
+#define TOKEN_REPLY_SOLUTION		"ok:solution:"
+#define TOKEN_REPLY_SOLUTION_ATOM	"%.2lf "
 #endif
 
 /**
@@ -38,7 +44,9 @@ enum token_state_ct {
 enum parser_state_ct {
 	parser_idle,
 	parser_problem,
-	parser_answer
+	parser_answer,
+	parser_solution,
+	parser_delete_answer
 	};
 
 /**
@@ -49,6 +57,7 @@ enum parser_state_ct {
  */
 union _reply_data {
 	unsigned long id;
+	struct answer_t * answer;
 	};
 
 /**
@@ -61,7 +70,9 @@ enum reply_state_ct {
 	reply_memory_error,
 	reply_descriptor_error,
 	reply_problem_ok,
-	reply_answer_ok
+	reply_answer_ok,
+	reply_solution,
+	reply_not_ready
 	};
 
 /**
@@ -72,6 +83,9 @@ enum reply_state_ct {
 struct parser_handle_t {
 	unsigned long (* register_problem) (struct problem_t *);
 	unsigned long (* register_answer) (struct answer_t *);
+	unsigned long (* request_answer) (struct answer_t *);
+	void (* list_problems) (void);
+	void (* list_answers) (void);
 	};
 
 /**

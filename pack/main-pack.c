@@ -12,6 +12,7 @@ int main (int argc, char ** argv) {
 	double state[6] = { 2.00, 3.00, 4.00, 1.00, 2.00, 6.00 };
 
 	struct problem_t problem;
+	struct file_header_t header;
 
 	unsigned long length;
 
@@ -31,7 +32,13 @@ int main (int argc, char ** argv) {
 	problem.data = data;
 	problem.state = state;
 
-	length = _problem_pack (argv[1], &problem, NULL);
+
+	header.id = 1;
+	header.parent = 0;
+	header.priority = 0;
+	header.status = 'N';
+
+	length = _problem_pack (argv[1], &problem, &header);
 
 
 	printf ("%ld bytes\n", length);

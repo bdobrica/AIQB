@@ -6,7 +6,7 @@
 
 #endif
 
-enum aiqbd_e {
+enum aiqbd_ct {
 	aiqbd_socket_interface
 	};
 
