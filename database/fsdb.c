@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <pthread.h>
 
 #include "../pack/pack.h"
 #include "fsdb.h"
@@ -244,6 +245,8 @@ unsigned long int _last_id_db (struct fsdb_t * db) {
  * @param *atom, pointer to database atom
  */
 void _free_atom (struct fsdb_t * atom) {
+	if (atom == NULL)
+		return;
 	free (atom);
 	}
 
@@ -252,7 +255,11 @@ void _free_atom (struct fsdb_t * atom) {
  * @param *db, pointer to database structure
  */
 void _free_db (struct fsdb_t * db) {
-	struct fsdb_t * deleted, * atom = db->next;
+	struct fsdb_t * deleted, * atom;
+	if (db == NULL)
+		return;
+
+	atom = db->next;
 	while (atom != NULL) {
 		deleted = atom;
 		atom->prev->next = NULL;
@@ -274,7 +281,7 @@ void _print_db (struct fsdb_t * db) {
 		}
 
 	do {
-		printf ("atom\n\tname:%s\n\tpriority:%d\n\tstatus:%c\n", atom->name, atom->header->priority, atom->header->status);
+		printf ("problem\n\tname: %s\n\tid: %ld\n\tpriority: %d\n\tstatus:%c\n", atom->name, atom->header->id, atom->header->priority, atom->header->status);
 		atom = atom->next;
 		}
 	while (atom != db);

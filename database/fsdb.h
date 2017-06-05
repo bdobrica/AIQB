@@ -16,12 +16,14 @@ struct fsdb_t {
 	char * name;
 	struct file_header_t * header;
 
+	pthread_t * handler;
+
 	struct fsdb_t * prev;
 	struct fsdb_t * next;
 	struct fsdb_t * root;
 	};
 
-enum _query_type_t {
+enum _query_type_ct {
 	query_by_id,
 	query_by_parent,
 	query_by_priority,
@@ -36,7 +38,7 @@ union _query_t {
 	};
 
 struct query_t {
-	enum _query_type_t type;
+	enum _query_type_ct type;
 	union _query_t query;
 	};
 

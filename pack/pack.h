@@ -31,17 +31,6 @@ union _file_header {
 	uint8_t bin[48];
 	};
 /**
- * @struct with the problem hypothesis
- * @var size_x the size of the input data
- * @var size_y the size of the output data
- * @var * data the input|output vector
- */
-struct answer_t {
-	unsigned long size_x;
-	unsigned long size_y;
-	double * data;
-	};
-/**
  * @struct holds an AI problem
  * @var type the type of the problem
  * @var optm the type of the optimizer used (nelder-mead, etc)
@@ -115,7 +104,7 @@ union _problem_atom {
  * @param *problem pointer to the problem datastructure
  * @return length of the written file
  */
-unsigned long _problem_pack (unsigned char * name, struct problem_t * problem);
+unsigned long _problem_pack (unsigned char * name, struct problem_t * problem, struct file_header_t * file_header);
 /**
  * function for unpacking an AI problem from a file
  * @param *name the name of the file
@@ -142,8 +131,3 @@ unsigned short _problem_write_metadata (unsigned char * name, struct file_header
  * @param *problem pointer to a problem_t struct
  */
 void _print_problem (struct problem_t * problem);
-/**
- * debug function for displaying an answer
- * @param *answer pointer to a answer_t struct
- */
-void _print_answer (struct answer_t * answer);

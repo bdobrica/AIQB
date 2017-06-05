@@ -142,7 +142,7 @@ void _daemon_solve (char (*solving_function)(struct problem_t * problem), struct
 
 	length = _problem_unpack (atom->name, problem);
 	status = solving_function (problem);
-	length = _problem_pack (atom->name, problem);
+	length = _problem_pack (atom->name, problem, NULL);
 	}
 
 void _daemon_query (double (*query_function)(struct problem_t * problem), struct fsdb_t * atom) {

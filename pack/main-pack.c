@@ -31,7 +31,7 @@ int main (int argc, char ** argv) {
 	problem.data = data;
 	problem.state = state;
 
-	length = _problem_pack (argv[1], &problem);
+	length = _problem_pack (argv[1], &problem, NULL);
 
 
 	printf ("%ld bytes\n", length);

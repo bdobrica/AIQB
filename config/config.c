@@ -5,6 +5,7 @@
 
 #include "../pack/pack.h"
 #include "../database/fsdb.h"
+#include "../answer/answer.h"
 #include "config.h"
 
 void _trim (char chr, char * str) {
@@ -29,11 +30,15 @@ int _init_config (struct config_t * config) {
 	config->run_dir = NULL;
 	config->pid_file = NULL;
 	/** fsdb_t * */
-	config->db = NULL;
-	config->queue = NULL;
+	config->problems = NULL;
+	config->problem_queue = NULL;
+	/** answer_t * */
+	config->answers = NULL;
+	config->answer_queue = NULL;
 	/** int */
 	config->no_daemon - 0;
-	config->queue_size = 8;
+	config->problem_queue_size = 8;
+	config->answer_queue_size = 8;
 	config->auto_increment = 0;
 	config->port = 0;
 	/** file descriptor */
@@ -49,8 +54,11 @@ void _free_config (struct config_t * config) {
 	free (config->run_dir);
 	free (config->pid_file);
 	/** fsdb_t * */
-	_free_db (config->db);
-	_free_db (config->queue);
+	_free_db (config->problems);
+	_free_db (config->problem_queue);
+	/** answer_t * */
+	_free_queue (config->answers);
+	_free_queue (config->answer_queue);
 	/** int */
 	/** file descriptor */
 	close (config->pid_file_d);
@@ -58,7 +66,7 @@ void _free_config (struct config_t * config) {
 
 int _assign_config (char * key, char * value, struct config_t * config) {
 	int l;
-	if (strcmp (key, "e") == 0 || strcmp (key, "config_dir") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_CONFIG_DIR) == 0 || strcmp (key, CONFIG_TOKEN_CONFIG_DIR) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
@@ -70,7 +78,7 @@ int _assign_config (char * key, char * value, struct config_t * config) {
 			}
 		return 1;
 		}
-	if (strcmp (key, "c") == 0 || strcmp (key, "config_file") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_CONFIG_FILE) == 0 || strcmp (key, CONFIG_TOKEN_CONFIG_FILE) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
@@ -82,7 +90,7 @@ int _assign_config (char * key, char * value, struct config_t * config) {
 			}
 		return 1;
 		}
-	if (strcmp (key, "d") == 0 || strcmp (key, "database_dir") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_DATABASE_DIR) == 0 || strcmp (key, CONFIG_TOKEN_DATABASE_DIR) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
@@ -94,7 +102,7 @@ int _assign_config (char * key, char * value, struct config_t * config) {
 			}
 		return 1;
 		}
-	if (strcmp (key, "r") == 0 || strcmp (key, "run_dir") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_RUN_DIR) == 0 || strcmp (key, CONFIG_TOKEN_RUN_DIR) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
@@ -106,7 +114,7 @@ int _assign_config (char * key, char * value, struct config_t * config) {
 			}
 		return 1;
 		}
-	if (strcmp (key, "p") == 0 || strcmp (key, "pid_file") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_PID_FILE) == 0 || strcmp (key, CONFIG_TOKEN_PID_FILE) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
@@ -118,22 +126,33 @@ int _assign_config (char * key, char * value, struct config_t * config) {
 			}
 		return 1;
 		}
-	if (strcmp (key, "q") == 0 || strcmp (key, "queue_size") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_QUEUE_SIZE) == 0 || strcmp (key, CONFIG_TOKEN_QUEUE_SIZE) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
 		_trim ('\'', value);
 		l = strlen (value);
 		if (l > 0) {
-			config->queue_size = atoi (value);
+			config->problem_queue_size = atoi (value);
 			}
 		return 1;
 		}
-	if (strcmp (key, "n") == 0 || strcmp (key, "no_deamon") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_ANSWERS_SIZE) == 0 || strcmp (key, CONFIG_TOKEN_ANSWERS_SIZE) == 0) {
+		if (value == NULL)
+			return 1;
+		_trim ('"', value);
+		_trim ('\'', value);
+		l = strlen (value);
+		if (l > 0) {
+			config->answer_queue_size = atoi (value);
+			}
+		return 1;
+		}
+	if (strcmp (key, CONFIG_TOKEN_S_NO_DAEMON) == 0 || strcmp (key, CONFIG_TOKEN_NO_DAEMON) == 0) {
 		config->no_daemon = 1;
 		return 1;
 		}
-	if (strcmp (key, "s") == 0 || strcmp (key, "socket") == 0) {
+	if (strcmp (key, CONFIG_TOKEN_S_SOCKET) == 0 || strcmp (key, CONFIG_TOKEN_SOCKET) == 0) {
 		if (value == NULL)
 			return 1;
 		_trim ('"', value);
@@ -176,7 +195,7 @@ void _parse_file (struct config_t * config) {
 	char * eq, * buffer;
 	FILE * f;
 	
-	if ((f = fopen (config->config_file == NULL ? CONFIG_FILE : config->config_file, "r")) == NULL) return;
+	if ((f = fopen (config->config_file == NULL ? CONFIG_DEFAULT_CONFIG_FILE : config->config_file, "r")) == NULL) return;
 
 	buffer = (char *) malloc (CONFIG_MAX_BUFFER * sizeof (char));
 
@@ -208,4 +227,15 @@ void _parse_file (struct config_t * config) {
 	free (buffer);
 	
 	close (f);
+	}
+
+void _print_config (struct config_t * config) {
+	printf ("Config Dir:	%s\n", config->config_dir);
+	printf ("Config File:	%s\n", config->config_file);
+	printf ("Database Dir:	%s\n", config->database_dir);
+	printf ("Run Dir:	%s\n", config->run_dir);
+	printf ("Pid File:	%s\n", config->pid_file);
+	printf ("Daemonize?:	%s\n", config->no_daemon ? "no" : "yes");
+	printf ("Problem Size:	%d\n", config->problem_queue_size);
+	printf ("Answer Size:	%d\n", config->answer_queue_size);
 	}

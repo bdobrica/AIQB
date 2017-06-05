@@ -7,6 +7,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "../pack/pack.h"
+#include "../parser/parser.h"
+
 #ifndef SOCKET_MAX_BUFFER
 #define SOCKET_MAX_BUFFER 256
 #endif
@@ -27,15 +30,12 @@ void _socket_client (int socket_fd) {
 	struct sockaddr_in client_addr;
 
 	if ((new_socket_fd = accept (socket_fd, (struct sockaddr *) &client_addr, &client_len)) < 0) return;
-	
-	bzero (buffer, sizeof (buffer));
-	n = read (new_socket_fd, buffer, sizeof (buffer) - 1);
-	if (n < 0) {
-		close (new_socket_fd);
-		return;
-		}
 
-	printf ("message: %s\n", buffer);
+	printf ("client accepted\n");
+
+	_parser (new_socket_fd, NULL);
+
+	printf ("client parser exit\n");
 
 	close (new_socket_fd);
 	}

@@ -6,64 +6,93 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 
+#include "../answer/answer.h"
 #include "../pack/pack.h"
+#include "parser.h"
 
-enum token_state_t {
-	token_idle,
-	token_comment
-	};
+/**
+ * function that replies to some parsed data
+ * @param fd, the file descriptor
+ * @param state, the parser state @see reply_state_ct
+ * @param data, the data passed to the replier
+ */
+void _reply (int fd, enum reply_state_ct state, union _reply_data data) {
+	int n;
+	char buffer[128];
 
-enum parser_state_t {
-	parser_idle,
-	parser_problem,
-	parser_answer
-	};
+	errno = 0;
+	if (fd < 0 || fcntl (fd, F_GETFD) < 0 || errno == EBADF)
+		return;
+	switch (state) {
+		case reply_problem_ok:
+			sprintf (buffer, TOKEN_REPLY_PROBLEM_OK, data.id);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write on descriptor\n");
+				}
+			break;
+		case reply_answer_ok:
+			sprintf (buffer, TOKEN_REPLY_ANSWER_OK, data.id);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write on descriptor\n");
+				}
+			break;
+		case reply_descriptor_error:
+			sprintf (buffer, TOKEN_REPLY_DESCRIPTOR_ERROR);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write to descriptor\n");
+				}
+			break;
+		case reply_memory_error:
+			sprintf (buffer, TOKEN_REPLY_MEMORY_ERROR);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write to descriptor\n");
+				}
+			break;
+		case reply_unknown_error:
+			sprintf (buffer, TOKEN_REPLY_UNKNOWN_ERROR);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write to descriptor\n");
+				}
+			break;
+		default:
+			sprintf (buffer, TOKEN_REPLY_IDLE);
+			n = write (fd, buffer, strlen (buffer));
+			if (n < 0) {
+				printf ("unable to write to descriptor\n");
+				}
+			break;
+		}
+	}
 
-struct parser_handle_t {
-	unsigned long (* register_problem) (struct problem_t *);
-	unsigned long (* register_answer) (struct answer_t *);
-	};
-
-/*
-struct answer_t {
-	unsigned long size_x;
-	unsigned long size_y;
-	double * data;
-	};
-
-struct problem_t {
-	unsigned int type;
-	unsigned int optm;
-
-	unsigned long rows;
-	unsigned long size_x;
-	unsigned long size_y;
-
-	unsigned long cv_size;
-	unsigned long test_size;
-
-	unsigned long state_size;
-
-	unsigned long * cv_data;
-	unsigned long * test_data;
-
-	double * data;
-	double * state;
-	};
-*/
-
+/**
+ * function that parses a stream of data from a file handler
+ * @param fd, the file descriptor
+ * @param *handler, pointer to the functions that will be applied on
+ * 		parsed atoms
+ */
 void _parser (int fd, struct parser_handle_t * handler) {
 	unsigned short int token_index, parser_index;
-	enum token_state_t token_state;
-	enum parser_state_t parser_state;
+	enum token_state_ct token_state;
+	enum parser_state_ct parser_state;
 	unsigned short int token_flags[4];
 	unsigned short int problem_tokens, answer_tokens;
-	unsigned long data_index;
+	unsigned long int data_index;
 	char c, token[128];
+	unsigned long int db_id;
 
 	struct answer_t * answer;
 	struct problem_t * problem;
+
+	union _reply_data reply_data;
+	enum reply_state_ct reply_state;
+
 
 	token_index = 0;
 	token_state = token_idle;
@@ -97,7 +126,7 @@ void _parser (int fd, struct parser_handle_t * handler) {
 			token_flags[3] ++;
 		if (c >= '0' && c <= '9')
 			token_flags[0] ++;
-		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'))
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == ':')
 			token_flags[1] ++;
 		if (c == '.')
 			token_flags[2] ++;
@@ -126,18 +155,54 @@ void _parser (int fd, struct parser_handle_t * handler) {
 							case 4:
 								problem->size_y = (unsigned long) atoi (token);
 								problem->data = (double *) malloc (problem->rows * (problem->size_x + problem->size_y) * sizeof (double));
+
+								if (problem->rows * (problem->size_x + problem->size_y) > 0 && problem->data == NULL) {
+									_reply (fd, reply_memory_error, reply_data);
+									free (problem->cv_data);
+									free (problem->test_data);
+									free (problem->state);
+									free (problem);
+									return;
+									}
 								break;
 							case 5:
 								problem->cv_size = (unsigned long) atoi (token);
 								problem->cv_data = (unsigned long *) malloc (problem->cv_size * sizeof (unsigned long));
+
+								if (problem->cv_size > 0 && problem->cv_data == NULL) {
+									_reply (fd, reply_memory_error, reply_data);
+									free (problem->test_data);
+									free (problem->data);
+									free (problem->state);
+									free (problem);
+									return;
+									}
 								break;
 							case 6:
 								problem->test_size = (unsigned long) atoi (token);
 								problem->test_data = (unsigned long *) malloc (problem->test_size * sizeof (unsigned long));
+
+								if (problem->test_size > 0 && problem->test_data == NULL) {
+									_reply (fd, reply_memory_error, reply_data);
+									free (problem->cv_data);
+									free (problem->data);
+									free (problem->state);
+									free (problem);
+									return;
+									}
 								break;
 							case 7:
 								problem->state_size = (unsigned long) atoi (token);
 								problem->state = (double *) malloc (problem->state_size * sizeof (double));
+
+								if (problem->state_size > 0 && problem->state == NULL) {
+									_reply (fd, reply_memory_error, reply_data);
+									free (problem->cv_data);
+									free (problem->test_data);
+									free (problem->data);
+									free (problem);
+									return;
+									}
 								break;
 							}
 
@@ -160,6 +225,12 @@ void _parser (int fd, struct parser_handle_t * handler) {
 							case 1:
 								answer->size_y = (unsigned long) atoi (token);
 								answer->data = (double *) malloc ((answer->size_x + answer->size_y) * sizeof (double));
+
+								if (answer->size_x + answer->size_y > 0 && answer->data == NULL) {
+									_reply (fd, reply_memory_error, reply_data);
+									free (answer);
+									return;
+									}
 								break;
 							}
 						parser_index ++;
@@ -185,6 +256,10 @@ void _parser (int fd, struct parser_handle_t * handler) {
 						parser_index ++;
 
 						if (parser_index == 8 + problem->cv_size + problem->test_size + problem->rows * (problem->size_x + problem->size_y) + problem->state_size) {
+							reply_state = reply_problem_ok;
+							reply_data.id = 1;
+							_reply (fd, reply_state, reply_data);
+
 							_print_problem (problem);
 							parser_state = parser_idle;
 							parser_index = 0;
@@ -199,6 +274,10 @@ void _parser (int fd, struct parser_handle_t * handler) {
 						parser_index ++;
 
 						if (parser_index == 2 + answer->size_x + answer->size_y) {
+							reply_state = reply_answer_ok;
+							reply_data.id = 1;
+							_reply (fd, reply_state, reply_data);
+
 							_print_answer (answer);
 							parser_state = parser_idle;
 							parser_index = 0;
@@ -209,25 +288,62 @@ void _parser (int fd, struct parser_handle_t * handler) {
 				if (token_flags[3] == token_flags[1]) {
 					printf ("command: %s\n", token);
 
-					if (strcmp (token, "register_problem") == 0) {
+					if (strcmp (token, TOKEN_REGISTER_PROBLEM) == 0) {
 						parser_state = parser_problem;
 						parser_index = 0;
 
 						problem = (struct problem_t *) malloc (sizeof (struct problem_t));
+						problem->cv_data = NULL;
+						problem->test_data = NULL;
+						problem->data = NULL;
+						problem->state = NULL;
+
+						if (problem == NULL) {
+							_reply (fd, reply_memory_error, reply_data);
+							return;
+							}
 						if (handler != NULL && handler->register_problem != NULL) {
-							handler->register_problem (problem);
+							db_id = handler->register_problem (problem);
 							}
 						}
 
-					if (strcmp (token, "register_answer") == 0) {
+					if (strcmp (token, TOKEN_REGISTER_ANSWER) == 0) {
 						parser_state = parser_answer;
 						parser_index = 0;
 
 						answer = (struct answer_t *) malloc (sizeof (struct answer_t));
+						answer->data = NULL;
 
-						if (handler != NULL && handler->register_answer != NULL) {
-							handler->register_answer (answer);
+						if (problem == NULL) {
+							_reply (fd, reply_memory_error, reply_data);
+							return;
 							}
+						if (handler != NULL && handler->register_answer != NULL) {
+							db_id = handler->register_answer (answer);
+							}
+						}
+
+					if (strcmp (token, TOKEN_REQUEST_ANSWER) == 0) {
+						}
+
+					if (strcmp (token, TOKEN_REQUEST_STATE) == 0) {
+						}
+
+					if (strcmp (token, TOKEN_REQUEST_CLOSE) == 0) {
+						switch (parser_state) {
+							case parser_problem:
+								free (problem->cv_data);
+								free (problem->test_data);
+								free (problem->data);
+								free (problem->state);
+								free (problem);
+								break;
+							case parser_answer:
+								free (answer->data);
+								free (answer);
+								break;
+							}
+						return;
 						}
 					}
 
@@ -237,20 +353,4 @@ void _parser (int fd, struct parser_handle_t * handler) {
 			continue;
 			}
 		}
-	}
-
-int main (int argc, char ** argv) {
-	int fd;
-
-	fd = open (argv[1], O_RDONLY);
-
-	if (fd < 0) {
-		printf ("error opening file\n");
-		exit (1);
-		}
-
-	_parser (fd);
-
-	close (fd);
-	return 0;
 	}

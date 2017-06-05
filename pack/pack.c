@@ -12,7 +12,7 @@
  * @param *problem pointer to the problem datastructure
  * @return length of the written file
  */
-unsigned long _problem_pack (unsigned char * name, struct problem_t * problem) {
+unsigned long _problem_pack (unsigned char * name, struct problem_t * problem, struct file_header_t * file_header) {
 	union _file_header metadata;
 	union _problem_header header;
 	union _problem_atom atom;
@@ -38,11 +38,20 @@ unsigned long _problem_pack (unsigned char * name, struct problem_t * problem) {
 	if (!file) return 0;
 
 	memcpy (metadata.header.prefix, "AIQB", 4);
-	metadata.header.id = 0;
-	metadata.header.parent = 0;
-	metadata.header.priority = 0;
 	metadata.header.time = (unsigned long) time (NULL);
-	metadata.header.status = 0;
+
+	if (file_header != NULL) {
+		metadata.header.id = file_header->id;
+		metadata.header.parent = file_header->parent;
+		metadata.header.priority = file_header->priority;
+		metadata.header.status = file_header->status;
+		}
+	else {
+		metadata.header.id = 0;
+		metadata.header.parent = 0;
+		metadata.header.priority = 0;
+		metadata.header.status = 0;
+		}
 
 	fwrite (metadata.bin, sizeof (uint8_t), sizeof (metadata.bin), file);
 
@@ -329,19 +338,5 @@ void _print_problem (struct problem_t * problem) {
 	for (c = 0; c < problem->state_size; c++) {
 		printf ("%.2lf, ", *(problem->state + c));
 		}
-	printf ("\b\b]\n");
-	}
-/**
- * debug function for displaying an answer
- * @param *answer pointer to answer_t struct
- */
-void _print_answer (struct answer_t * answer) {
-	unsigned long c, d;
-	printf ("answer\n\tsize_x = %ld\n\tsize_y = %ld\n",
-		answer->size_x,
-		answer->size_y);
-	printf ("\tdata = [  ");
-	for (c = 0; c < answer->size_x + answer->size_y; c++)
-		printf ("%.2lf, ", *(answer->data + c));
 	printf ("\b\b]\n");
 	}

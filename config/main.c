@@ -7,8 +7,6 @@
 //#include "../database/fsdb.h"
 #include "config.h"
 
-#define CONFIG_FILE "config.ini"
-
 int main (int argc, char ** argv) {
 	struct config_t config;
 

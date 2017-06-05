@@ -1,4 +1,4 @@
-#AI Tools
+#AI Tools#
 
 The following repository contains pieces used in an universal AI daemon. The daemon will solve common AI problems. All code is written in C.
 Each AI problem can be broken down to the following components:
@@ -15,7 +15,7 @@ Each AI problem can be broken down to the following components:
 
 SOLUTION = PROBLEMSOLVER [ TYPE, STATE [ TRAININGDATA, CROSSVALIDATION, TEST, OPTIMIZATION ], PROBLEMDATA ];
 
-##AI problem file structure:
+##AI problem file structure##
 
 * header: 4 bytes | TYPE (2 bytes) | OPTIMIZATION (2 bytes) |
 * data size: 16 bytes | ROWS (8 bytes) | INPUT SIZE (4 bytes) | OUTPUT SIZE (4 bytes) |
@@ -27,13 +27,18 @@ SOLUTION = PROBLEMSOLVER [ TYPE, STATE [ TRAININGDATA, CROSSVALIDATION, TEST, OP
 * data: | DATA (double, ...) |
 * state: | STATE (double, ...) |
 
-##Config options:
+##Config options##
 * port: listening port for problem definition
 * path: problems directory, default /var/lib/aiqbd
 
-##Directories:
+##Directories##
 * /etc/aiqbd: configuration files
 * /var/lib/aiqbd: default problem database
 
-##Daemon Behavior
+##Daemon Behavior##
 Listen to connection on TCP/IP port.
+
+##Threads##
+* *communication_thread*: handles IPC (registeres problems and answers)
+* *train_thread*: trains AI based on problems
+* *solve_thread*: solves AI problems

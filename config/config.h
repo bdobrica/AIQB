@@ -1,13 +1,35 @@
-#ifndef CONFIG_DIR
-#define CONFIG_DIR "/etc/aiqbd"
+#ifndef CONFIG_TOKENS
+#define CONFIG_TOKENS
+
+#define CONFIG_TOKEN_S_CONFIG_DIR	"e"
+#define CONFIG_TOKEN_S_CONFIG_FILE	"c"
+#define CONFIG_TOKEN_S_DATABASE_DIR	"d"
+#define CONFIG_TOKEN_S_RUN_DIR		"r"
+#define CONFIG_TOKEN_S_PID_FILE		"p"
+#define CONFIG_TOKEN_S_QUEUE_SIZE	"q"
+#define CONFIG_TOKEN_S_ANSWERS_SIZE	"a"
+#define CONFIG_TOKEN_S_NO_DAEMON	"n"
+#define CONFIG_TOKEN_S_SOCKET		"s"
+
+#define CONFIG_TOKEN_CONFIG_DIR		"config_dir"
+#define CONFIG_TOKEN_CONFIG_FILE	"config_file"
+#define CONFIG_TOKEN_DATABASE_DIR	"database_dir"
+#define CONFIG_TOKEN_RUN_DIR		"run_dir"
+#define CONFIG_TOKEN_PID_FILE		"pid_file"
+#define CONFIG_TOKEN_QUEUE_SIZE		"queue_size"
+#define CONFIG_TOKEN_ANSWERS_SIZE	"answers_size"
+#define CONFIG_TOKEN_NO_DAEMON		"no_daemon"
+#define CONFIG_TOKEN_SOCKET		"socket"
+
 #endif
 
-#ifndef CONFIG_FILE
-#define CONFIG_FILE "config.ini"
-#endif
+#ifndef CONFIG_DEFAULTS
+#define CONFIG_DEFAULTS
 
-#ifndef DATABASE_DIR
-#define DATABASE_DIR "/var/lib/aiqbd"
+#define CONFIG_DEFAULT_CONFIG_DIR	"/etc/aiqbd"
+#define CONFIG_DEFAULT_CONFIG_FILE	"aiqbd.ini"
+#define CONFIG_DEFAULT_DATABASE_DIR	"/var/lib/aiqbd"
+
 #endif
 
 #ifndef CONFIG_MAX_BUFFER
@@ -38,12 +60,17 @@ struct config_t {
 	char * run_dir;
 	char * pid_file;
 
-	struct fsdb_t * db;
-	struct fsdb_t * queue;
+	struct fsdb_t * problems;
+	struct fsdb_t * problem_queue;
+
+	struct answer_t * answers;
+	struct answer_t * answer_queue;
 
 	unsigned short int no_daemon;
 
-	unsigned int queue_size;
+	unsigned int problem_queue_size;
+	unsigned int answer_queue_size;
+
 	unsigned long auto_increment;
 
 	int port;
@@ -90,3 +117,9 @@ void _parse_args (int argc, char ** argv, struct config_t * config);
  * @see @struct config_t
  */
 void _parse_file (struct config_t * config);
+/**
+ * debug function for displaying the config options
+ * @param *config _config structure pointer
+ * @see @struct config_t
+ */
+void _print_config (struct config_t * config);
