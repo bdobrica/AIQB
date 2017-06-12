@@ -99,6 +99,29 @@ union _problem_atom {
 	uint8_t bin[8];
 	};
 /**
+ *
+ */
+enum problem_ct {
+	problem_add_bias	= 0x0001,
+	problem_col_major	= 0x0002,
+	problem_row_major	= 0x0004
+	};
+/**
+ *
+ */
+enum problem_enhance_ct {
+	problem_enhance_p2	= 0x0001,
+	problem_enhance_sqrt	= 0x0002,
+	problem_enhance_p3	= 0x0004,
+	problem_enhance_qbrt	= 0x0008,
+	problem_enhance_exp	= 0x0010,
+	problem_enhance_log	= 0x0020,
+	problem_enhance_sin	= 0x0040,
+	problem_enhance_asin	= 0x0080,
+	problem_enhance_cos	= 0x0100,
+	problem_enhance_acos	= 0x0200
+	};
+/**
  * function for packing an IA problem in a file
  * @param *name the name of the file
  * @param *problem pointer to the problem datastructure
@@ -131,3 +154,15 @@ unsigned short _problem_write_metadata (unsigned char * name, struct file_header
  * @param *problem pointer to a problem_t struct
  */
 void _print_problem (struct problem_t * problem);
+/**
+ *
+ */
+double * _problem_recover_X (struct problem_t * problem, int storage);
+/**
+ *
+ */
+double * _problem_recover_y (struct problem_t * problem, int storage);
+/**
+ *
+ */
+double * _problem_enhance_X (struct problem_t * problem, int enhance);

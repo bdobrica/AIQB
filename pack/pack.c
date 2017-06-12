@@ -349,3 +349,95 @@ void _print_problem (struct problem_t * problem) {
 		}
 	printf ("\b\b]\n");
 	}
+/**
+ *
+ */
+double * _problem_recover_X (struct problem_t * problem, int storage) {
+	unsigned long features, examples, f, e;
+	double * X, alpha = 1.00;
+
+	examples = problem->rows;
+	if ((storage & problem_add_bias) == problem_add_bias)
+		features = problem->size_x + 1;
+	else
+		features = problem->size_x;
+	
+	X = (double *) malloc (examples * features * sizeof (double));
+	if (X == NULL)
+		return NULL;
+
+	if ((storage & problem_row_major) == problem_row_major) {
+		if ((storage & problem_add_bias) == problem_add_bias) {
+			for (e = 0; e < examples; e++) {
+				memcpy ((X + examples * e), &alpha, sizeof (double));
+				memcpy ((X + examples * e + 1), (problem->data + (problem->size_x + problem->size_y) * e), problem->size_x * sizeof (double));
+				}
+			}
+		else {
+			for (e = 0; e < examples; e++) {
+				memcpy ((X + examples * e), (problem->data + (problem->size_x + problem->size_y) * e), problem->size_x * sizeof (double));
+				}
+			}
+		}
+	
+	if ((storage & problem_col_major) == problem_col_major) {
+		if ((storage & problem_add_bias) == problem_add_bias) {
+			for (e = 0; e < examples; e++) {
+				for (f = 0; f < features; f++) {
+					if (f == 0)
+						*(X + f * examples + e) = alpha;
+					else
+						*(X + f * examples + e) = *(problem->data + e * (problem->size_x + problem->size_y) + (f - 1));
+					}
+				}
+			}
+		else {
+			for (e = 0; e < examples; e++) {
+				for (f = 0; f < features; f++) {
+					*(X + f * examples + e) = *(problem->data + e * (problem->size_x + problem->size_y) + f);
+					}
+				}
+			}
+		}
+	
+	return X;
+	}
+/**
+ *
+ */
+double * _problem_recover_y (struct problem_t * problem, int storage) {
+	unsigned long features, examples, f, e;
+	double * y, alpha = 1.00;
+
+	features = problem->size_y;
+	examples = problem->rows;
+
+	y = (double *) malloc (examples * features * sizeof (double));
+	if (y == NULL)
+		return NULL;
+
+	for (e = 0; e < examples; e ++) {
+		for (f = 0; f < features; f++) {
+			if ((storage & problem_row_major) == problem_row_major) {
+				for (e = 0; e < examples; e++) {
+					memcpy ((y + examples * e), (problem->data + (problem->size_x + problem->size_y) * e + problem->size_x), problem->size_y * sizeof (double));
+					}
+				}
+			if ((storage & problem_col_major) == problem_col_major) {
+				for (e = 0; e < examples; e++) {
+					for (f = 0; f < features; f++) {
+						*(y + f * examples + e) = *(problem->data + e * (problem->size_x + problem->size_y) + problem->size_x + f);
+						}
+					}
+				}
+			}
+		}
+
+	return y;
+	}
+/**
+ *
+ */
+double * _problem_enhance_X (struct problem_t * problem, int enhance) {
+	return NULL;
+	}
