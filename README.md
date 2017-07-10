@@ -42,3 +42,5 @@ Listen to connection on TCP/IP port.
 * *communication_thread*: handles IPC (registeres problems and answers)
 * *train_thread*: trains AI based on problems
 * *solve_thread*: solves AI problems
+
+The content of this repository is provided "as is" with no implied warranty. Also the content is available under [Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode).
