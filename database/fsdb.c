@@ -6,8 +6,15 @@
 #include <dirent.h>
 #include <pthread.h>
 
-#include "../pack/pack.h"
+
 #include "fsdb.h"
+#include "../daemon/daemon.h"
+#include "../pack/pack.h"
+
+#include "../config/config.h"
+#include "../answer/answer.h"
+
+
 
 /**
  * function, checking if dir_name is dir

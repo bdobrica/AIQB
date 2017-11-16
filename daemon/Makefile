@@ -1,5 +1,12 @@
 CC=gcc
-daemon: main.c daemon.c ../config/config.c ../database/fsdb.c ../pack/pack.c
-	$(CC) -o daemon main.c daemon.c ../config/config.c ../database/fsdb.c ../pack/pack.c
+CFLAGS = -I.
+DEPS = daemon.h ../config/config.h ../database/fsdb.h ../pack/pack.h
+OBJ = main.o daemon.o ../config/config.o ../database/fsdb.o ../pack/pack.o
+
+%.o: %.c $(DEPS)
+		$(CC) -c -o $@ $< $(CFLAGS)
+daemon: $(OBJ)
+		gcc -o $@ $^ $(CFLAGS)
+
 clean:
 	rm daemon

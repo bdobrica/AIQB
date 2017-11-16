@@ -3,8 +3,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "../daemon/daemon.h"
 #include "../pack/pack.h"
 #include "../database/fsdb.h"
+
 #include "../answer/answer.h"
 #include "config.h"
 
@@ -36,6 +38,9 @@ int _init_config (struct config_t * config) {
 	config->answers = NULL;
 	config->answer_queue = NULL;
 	/** int */
+	config->db = 0;
+	config->queue = 0;
+	config->queue_size = 0;
 	config->no_daemon - 0;
 	config->problem_queue_size = 8;
 	config->answer_queue_size = 8;
@@ -56,9 +61,12 @@ void _free_config (struct config_t * config) {
 	/** fsdb_t * */
 	_free_db (config->problems);
 	_free_db (config->problem_queue);
+	_free_db (config->db);
+	_free_db (config->queue);
 	/** answer_t * */
-	_free_queue (config->answers);
-	_free_queue (config->answer_queue);
+	//_free_queue (config->answers);
+	//_free_queue (config->answer_queue);
+	
 	/** int */
 	/** file descriptor */
 	close (config->pid_file_d);

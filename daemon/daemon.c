@@ -8,10 +8,10 @@
 #include <string.h>
 #include <stdint.h>
 
+
 #include "../pack/pack.h"
 #include "../database/fsdb.h"
 #include "../config/config.h"
-
 #include "daemon.h"
 
 void _signals (int sig) {

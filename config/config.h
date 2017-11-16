@@ -62,7 +62,9 @@ struct config_t {
 
 	struct fsdb_t * problems;
 	struct fsdb_t * problem_queue;
-
+	struct fsdb_t * db;
+	struct fsdb_t * queue;
+	
 	struct answer_t * answers;
 	struct answer_t * answer_queue;
 
@@ -70,7 +72,8 @@ struct config_t {
 
 	unsigned int problem_queue_size;
 	unsigned int answer_queue_size;
-
+	unsigned int queue_size;
+	
 	unsigned long auto_increment;
 
 	int port;

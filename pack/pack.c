@@ -5,6 +5,10 @@
 #include <string.h>
 
 #include "pack.h"
+#include "../daemon/daemon.h"
+
+#include "../database/fsdb.h"
+#include "../config/config.h"
 
 /**
  * function for packing an IA problem in a file

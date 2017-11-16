@@ -15,9 +15,11 @@ struct file_header_t {
 struct fsdb_t {
 	char * name;
 	struct file_header_t * header;
-
+	
 	pthread_t * handler;
-
+	
+	struct fsdb_t * queue;
+	struct fsdb_t * db;
 	struct fsdb_t * prev;
 	struct fsdb_t * next;
 	struct fsdb_t * root;
